@@ -1,0 +1,79 @@
+version: '3.5'
+
+services:
+  postgres:
+    image: docker.hliss.ru/b-sight/sight-db:latest
+    restart: on-failure
+    ports:
+      - "54321:5432"
+    volumes: 
+      - ./pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: k49Qe8zTBs6krMfvnRe74wG46CFXUr
+      POSTGRES_HOST: postgres
+      ENVIRONMENT: development
+
+  sight_migrations:
+    image: docker.hliss.ru/b-sight/sight-migrations:latest
+    restart: on-failure
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: k49Qe8zTBs6krMfvnRe74wG46CFXUr
+      POSTGRES_HOST: postgres
+      POSTGRES_DATABASE: b_sight_db
+    depends_on:
+        - postgres
+
+  billing2_migrations:
+    image: docker.hliss.ru/b-sight/billing2_migrations:latest
+    restart: on-failure
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: k49Qe8zTBs6krMfvnRe74wG46CFXUr
+      POSTGRES_HOST: postgres
+      POSTGRES_DATABASE: b_sight_db
+    depends_on:
+        - postgres
+
+  auth:
+    image: docker.hliss.ru/billing2/auth:latest
+    restart: on-failure
+    ports:
+      - "80:80"
+    environment:
+      HOST: :80
+      LOG_LEVEL: DEBUG
+      AUTH_SECRET_KEY: Secretkey
+      AUTH_ACCESS_TIMEOUT: 600s
+      AUTH_REFRESH_TIMEOUT: 24h
+      DB_USER: api
+      DB_PASSWORD: k49Qe8zTBs6krMfvnRe74wG46CFXUr
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: b_sight_db
+      MODE_PRODUCTION: "false"
+      EXT_CLAIMS_ENABLED: "true"
+      EXT_CLAIMS_URL: http://host.docker.internal:8080/locals
+      EXT_CLAIMS_SECRET: i1bZw5IpQYlA54r6Dux4e7cOKavlyDoq
+    depends_on:
+        - postgres
+
+  billing_api:
+    image: docker.hliss.ru/billing2/api:latest
+    ports:
+      - "8082:80"
+    environment:
+      HOST: :80
+      LOG_LEVEL: DEBUG
+      DB_USER: api
+      DB_PASSWORD: k49Qe8zTBs6krMfvnRe74wG46CFXUr
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: b_sight_db
+      AUTH_SECRET_KEY: Secretkey
+    restart: always
+    depends_on:
+        - postgres
+        - auth
+
